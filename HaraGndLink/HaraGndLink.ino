@@ -1,5 +1,26 @@
-//  Copyright (c) Scott Simpson 2015
-//  
+/*
+  HaraGndLink - Haraki Ground Link
+  (c) Bamfax 21.06.2015
+  Not for commercial use
+	
+	This is about: Getting a decent and mostly complete telemetry dataset from harakiri down to earth to Taranis, using FrSky RX. 
+	And to allow having custom sensors in the airverhicle, where needed.
+  
+  Written for and tested on:
+	- Harakiri TestCode 3, commit 147
+	- OpenTX 2.0.99 on Taranis, X4R-sb
+	- Teensy 3.1
+	
+	Would not be here without the work from:
+	- Crashpilot1000 (https://github.com/Crashpilot1000) and his Harakiri Firmware
+	- Pawelsky (http://www.rcgroups.com/forums/member.php?u=393936) and his FrSky S-Port telemetry library
+	- The OpenTX project
+	- ScottFlys MAVLink to FrSky Telemetry Firmware (http://www.rcgroups.com/forums/showthread.php?t=2274401)
+	- Many others of the Multiwii and FPV community
+	
+	Compiling:
+	- Has a bug with Arduino 1.6.4. Hangs while compiling. Use Arduino 1.6.5 and Teensyduino 1.24 beta3 instead.
+	
 //  This program is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
@@ -11,31 +32,31 @@
 //  GNU General Public License for more details.
 //
 //  A copy of the GNU General Public License is available at <http://www.gnu.org/licenses/>.
-//    
-//
-//  For Teensy 3.1 support
-//    Connect:
-//      SPort S     -> TX1
-//      SPort +     -> Vin
-//      SPort -     -> GND
-//  
-//      Mavlink TX  -> RX2
-//      Mavlink GND -> GND
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+*/
+
 #include <GCS_MAVLink.h>
-#include "MavSky.h"
-#include "FrSkySPort.h"
+#include "HaraGndLink.h"
+#include "FrSkySportSensor.h"
+#include "FrSkySportSensorFcs.h"
+#include "FrSkySportSensorFlvss.h"
+#include "FrSkySportSensorGps.h"
+#include "FrSkySportSensorRpm.h"
+#include "FrSkySportSensorVario.h"
+#include "FrSkySportSingleWireSerial.h"
+#include "FrSkySportTelemetry.h"
 #include "Logger.h"
 #include "MavLink.h"
+#include "FrSkySPort.h"
 
-#define PRODUCT_STRING  "MAVSky Version 1.1.1"
+#define PRODUCT_STRING  "HaraGndLink v0.1"
 
 #define DEBUG_SERIAL    Serial
 #define MAVLINK_SERIAL  Serial2
 #define LEDPIN          13
-                          
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t next_1000_loop = 0L;
+uint32_t next_200_loop = 0L;
+uint32_t next_100_loop = 0L;
 
 void console_print(char* fmt, ...) {
     char formatted_string[256];
@@ -46,68 +67,33 @@ void console_print(char* fmt, ...) {
     DEBUG_SERIAL.print(formatted_string);
 }
 
-void setup()  {
+void setup() {
   debug_init();
   delay(5000);
 
   pinMode(LEDPIN, OUTPUT);
-  console_print("%s\r\nStarting\r\n]", PRODUCT_STRING);
-
-  telem_data_init();  
-  frsky_init();
-  mavlink_init();
+  console_print("%s\r\nStarting\r\n", PRODUCT_STRING);
+	
+	telem_data_init();
+	frsky_init();
+	mavlink_init();
+	
+	console_print("] ");
 }
 
-void check_for_faults() {
-  int mav_online;
-  mav_online = mavlink_online();
-  diags_set_fault_to(FAULT_MAV_OFFLINE, !mav_online);
-  if(mav_online) {                                                                  // don't set other mav faults if mav is offline
-    diags_set_fault_to(FAULT_MAV_SYS_STATUS, !mavlink_sys_status_data_valid());
-    diags_set_fault_to(FAULT_MAV_GPS, !mavlink_gps_data_valid());
-    diags_set_fault_to(FAULT_MAV_VFR_HUD, !mavlink_vfr_data_valid());
-    diags_set_fault_to(FAULT_MAV_RAW_IMU, !mavlink_imu_data_valid());
-    diags_set_fault_to(FAULT_MAV_ATTITUDE, !mavlink_attitude_data_valid());
-  } else {
-    diags_clear_fault(FAULT_MAV_SYS_STATUS);
-    diags_clear_fault(FAULT_MAV_GPS);
-    diags_clear_fault(FAULT_MAV_VFR_HUD);
-    diags_clear_fault(FAULT_MAV_RAW_IMU);
-    diags_clear_fault(FAULT_MAV_ATTITUDE);
-  }
-  diags_set_fault_to(FAULT_SPORT_OFFLINE, !frsky_online());
-}
-
-uint32_t next_200_loop = 0L;
-uint32_t next_100_loop = 0L;
-
-void loop()  {
+void loop() {
   uint16_t len;
   uint32_t current_milli;
-  
-  process_mavlink_packets();
+	
+	current_milli = millis();
 
-  frsky_process();               // Check FrSky S.Port communication
-
-  check_for_console_command();
-  
-  current_milli = millis();
-
-  if(current_milli >= next_200_loop) {
-    next_200_loop = current_milli + 200;
-    diags_update_led();
+  if (current_milli >= next_1000_loop) {
+    next_1000_loop = current_milli + 1000;
+		digitalWrite(LEDPIN, !digitalRead(LEDPIN));
+//    diags_update_led();
   }
-  
-  if(current_milli >= next_100_loop) {
-    next_100_loop = current_milli + 100;
-    check_for_faults();
-  }
+	
+	process_mavlink_packets();			// Get data from mavlink and process it
+	frsky_process();								// Prepare and send FrSky S.Port data
+	check_for_console_command();
 }
-
-
-
-
-
-
-
-

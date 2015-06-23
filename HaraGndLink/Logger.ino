@@ -7,7 +7,7 @@ int debugMavAllEnable = 0;
 int debugMavHeartbeatEnable = 0;
 int debugMavGpsEnable = 0;
 int debugMavImuEnable = 0;
-int debugMavVfrEnable = 0;
+int debugMavHudEnable = 0;
 int debugMavAttitudeEnable = 0;
 int debugMavStatusEnable = 0;
 int debugMavTextEnable = 0;
@@ -43,7 +43,11 @@ void debug_print(int subsystem, char* fmt, ...) {
         print_enable = 1;
       }
       break;    
-    case LOG_MAV_ATTITUDE :
+    case LOG_MAV_HUD :
+      if(debugMavHudEnable || debugMavAllEnable) {
+        print_enable = 1;
+      }
+      break;        case LOG_MAV_ATTITUDE :
       if(debugMavAttitudeEnable || debugMavAllEnable) {
         print_enable = 1;
       }

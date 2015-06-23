@@ -1,7 +1,7 @@
 #include "MavLink.h"
 
 void mavlink_init() {
-  MAVLINK_SERIAL.begin(57600);
+  MAVLINK_SERIAL.begin(MAVLINK_BAUD);
 }
 
 #define EXPIRY_MILLIS_MAVLINK_MSG_ID_HEARTBEAT   1200
@@ -113,13 +113,31 @@ void process_mavlink_packets() {
   while(MAVLINK_SERIAL.available()) { 
     uint8_t c = MAVLINK_SERIAL.read();
     if(mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
+/*			DEBUG_SERIAL.print("msg.msgid: ");
+			DEBUG_SERIAL.print(msg.msgid);
+			DEBUG_SERIAL.println();*/
+				
       switch(msg.msgid) {
+				
         case MAVLINK_MSG_ID_HEARTBEAT: 
           debug_print(LOG_MAV_HEARTBEAT, "MAVLINK_MSG_ID_HEARTBEAT: base_mode: %d, custom_mode: %d", mavlink_msg_heartbeat_get_base_mode(&msg), mavlink_msg_heartbeat_get_custom_mode(&msg));            
           add_timestamp(TIMESTAMP_MAVLINK_MSG_ID_HEARTBEAT);
           mav.base_mode = mavlink_msg_heartbeat_get_base_mode(&msg);
           mav.custom_mode = mavlink_msg_heartbeat_get_custom_mode(&msg);
           break;
+  
+        case MAVLINK_MSG_ID_VFR_HUD:
+//					DEBUG_SERIAL.print("Entered VFR "); DEBUG_SERIAL.println();
+//					DEBUG_SERIAL.print("Heading: "); DEBUG_SERIAL.print(mavlink_msg_vfr_hud_get_heading(&msg)); DEBUG_SERIAL.println();
+//          debug_print(LOG_MAV_HUD, "MAVLINK_MSG_ID_VFR_HUD: groundspeed: %d, heading: %d, throttle: %d, alt: %d, climbrate: %d", mavlink_msg_vfr_hud_get_groundspeed(&msg), mavlink_msg_vfr_hud_get_heading(&msg), mavlink_msg_vfr_hud_get_throttle(&msg), mavlink_msg_vfr_hud_get_alt(&msg), mavlink_msg_vfr_hud_get_climb(&msg));            
+			mav.groundspeed = mavlink_msg_vfr_hud_get_groundspeed(&msg);      // 100 = 1m/s
+			mav.heading = mavlink_msg_vfr_hud_get_heading(&msg);              // 100 = 100 deg
+			mav.throttle = mavlink_msg_vfr_hud_get_throttle(&msg);            //  100 = 100%
+			mav.bar_altitude = mavlink_msg_vfr_hud_get_alt(&msg) * 100;       //  m
+			mav.ap_climb_rate=mavlink_msg_vfr_hud_get_climb(&msg) * 100;      //  m/s
+			debug_print(LOG_MAV_HUD, "MAVLINK_MSG_ID_VFR_HUD: groundspeed: %d, heading: %d, throttle: %d, alt: %d, climbrate: %d", mav.groundspeed, mav.heading, mav.throttle, mav.bar_altitude, mav.ap_climb_rate);            
+			add_timestamp(TIMESTAMP_MAVLINK_MSG_ID_VFR_HUD);
+          break; 
   
         case MAVLINK_MSG_ID_STATUSTEXT:
           add_timestamp(TIMESTAMP_MAVLINK_MSG_ID_STATUSTEXT);
@@ -198,16 +216,6 @@ void process_mavlink_packets() {
           add_timestamp(TIMESTAMP_MAVLINK_MSG_ID_ATTITUDE);
           break;
   
-        case MAVLINK_MSG_ID_VFR_HUD:
-          mav.groundspeed = mavlink_msg_vfr_hud_get_groundspeed(&msg);      // 100 = 1m/s
-          mav.heading = mavlink_msg_vfr_hud_get_heading(&msg);              // 100 = 100 deg
-          mav.throttle = mavlink_msg_vfr_hud_get_throttle(&msg);            //  100 = 100%
-          mav.bar_altitude = mavlink_msg_vfr_hud_get_alt(&msg) * 100;       //  m
-          mav.ap_climb_rate=mavlink_msg_vfr_hud_get_climb(&msg) * 100;         //  m/s
-          debug_print(LOG_MAV_VFR, "MAVLINK_MSG_ID_VFR_HUD: groundspeed: %d, heading: %d, throttle: %d, alt: %d, climbrate: %d", mav.groundspeed, mav.heading, mav.throttle, mav.bar_altitude, mav.ap_climb_rate);            
-          add_timestamp(TIMESTAMP_MAVLINK_MSG_ID_VFR_HUD);
-          break; 
-  
         case MAVLINK_MSG_ID_MISSION_CURRENT:                                  // 42
           mav.mission_current_seq = mavlink_msg_mission_current_get_seq(&msg);
           debug_print(LOG_MAV_OTHER, "MAVLINK MSG_ID: %d", msg.msgid);            
@@ -238,9 +246,11 @@ void process_mavlink_packets() {
         default:
           debug_print(LOG_MAV_UNKNOWN, "Unhandled MAVLINK message %d", msg.msgid);           
           break;
+					
       }
     }
   }
 }
+
 
 

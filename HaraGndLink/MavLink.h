@@ -2,6 +2,8 @@
 #ifndef MAVDATA
 #define MAVDATA
 
+#define MAVLINK_BAUD                    115200
+
 #define MAV_HISTORY_BUFFER_SIZE 64
           
 typedef struct MavClass {

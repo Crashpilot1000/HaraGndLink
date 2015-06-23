@@ -8,14 +8,14 @@ int cmd_index = 0;
 
 void do_help() {
   console_print("%s\r\n", PRODUCT_STRING);
-  console_print("debug mav [all|heartbeat|gps|attitude|imu|vfr|status|text|other] [on|off]\r\n"); 
+  console_print("debug mav [all|heartbeat|gps|attitude|imu|hud|status|text|other] [on|off]\r\n"); 
   console_print("debug frsky [all|rpm] [on|off]\r\n"); 
   console_print("debug temp [on|off]\r\n"); 
   console_print("dump\r\n");
   console_print("timing\r\n");
   console_print("msg [MESSAGE TEXT]\r\n");
   console_print("map\r\n");
-  console_print("map vfas     [direct|average10|average50]\r\n");
+  console_print("map fcs      [direct|average10|average50]\r\n");
   console_print("map current  [direct|average10|average50]\r\n");
   console_print("map accx     [direct|average10|average50|peak10|peak50]\r\n");
   console_print("map accy     [direct|average10|average50|peak10|peak50]\r\n");
@@ -23,7 +23,7 @@ void do_help() {
   console_print("map gpsspeed [kph|mps]\r\n");
   console_print("map t2       [batt_remain|mission_seq|temp|wp_dist|hdop]\r\n");
   console_print("set hdop     [1-10]\r\n");
-  console_print("frsky vfas   [enable|disable]\r\n");
+  console_print("frsky fcs    [enable|disable]\r\n");
   console_print("factory\r\n");
 }
 
@@ -40,10 +40,10 @@ void parse_debug_on_off(char* p, int *debug_var_ptr, char *name) {
   
   if(strcmp(p, "on") == 0) {
     *debug_var_ptr = 1;
-    console_print(" on\r\n");
+    console_print("%s on\r\n", *name);
   } else if(strcmp(p, "off") == 0) {
     *debug_var_ptr = 0;
-    console_print(" off\r\n");
+    console_print("%s off\r\n", *name);
   } else if(p == NULL) {
     console_print("%s\r\n", on_off(*debug_var_ptr));
   } else {
@@ -73,6 +73,12 @@ void do_dump() {
   imu_yacc_ave = mavlink_get_average(mav.imu_yacc_peak_buffer, mav.imu_yacc_peak_buffer_start, mav.imu_yacc_peak_buffer_length, 10, MAV_HISTORY_BUFFER_SIZE);
   imu_zacc_ave = mavlink_get_average(mav.imu_zacc_peak_buffer, mav.imu_zacc_peak_buffer_start, mav.imu_zacc_peak_buffer_length, 10, MAV_HISTORY_BUFFER_SIZE);
   console_print("Mavlink imu peak average:  x:%-4d y:%-4d z:%-4d\r\n", imu_xacc_ave, imu_yacc_ave, imu_zacc_ave);
+	
+	console_print("HUD Groundspeed:           %d\r\n", mav.groundspeed);
+	console_print("HUD heading:               %d\r\n", mav.heading);
+	console_print("HUD throttle:              %.2f\r\n", mav.throttle);
+	console_print("HUD bar_altitude:          %d\r\n", mav.bar_altitude);
+	console_print("HUD ap_climb_rate:         %d\r\n", mav.ap_climb_rate);
 }
 
 void do_times() {
@@ -87,9 +93,10 @@ void do_times() {
   console_print("Mavlink scaled pressure:   %d\r\n", get_timestamp_delta(TIMESTAMP_MAVLINK_MSG_ID_SCALED_PRESSURE));
   console_print("Mavlink controller output: %d\r\n", get_timestamp_delta(TIMESTAMP_MAVLINK_MSG_ID_CONTROLLER_OUTPUT));
   console_print("FrSky vario:               %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_VARIO)); 
-  console_print("FrSky fas:                 %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_FAS)); 
+  console_print("FrSky fas:                 %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_FCS)); 
   console_print("FrSky gps:                 %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_GPS)); 
   console_print("FrSky rpm:                 %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_RPM)); 
+	console_print("FrSky flvss:               %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_FLVSS));
   console_print("FrSky other:               %d\r\n", get_timestamp_delta(TIMESTAMP_FRSKY_OTHER)); 
 }
 
@@ -98,18 +105,18 @@ void do_msg(char* message_text) {
 }
 
 void do_map_dump() {
-  switch(EEPROM.read(EEPROM_ADDR_MAP_TELEM_DATA_VFAS)) {
-    case EEPROM_VALUE_MAP_VFAS_DIRECT:
-     console_print("voltage direct routed to vfas\r\n");
+  switch(EEPROM.read(EEPROM_ADDR_MAP_TELEM_DATA_FCS)) {
+    case EEPROM_VALUE_MAP_FCS_DIRECT:
+     console_print("voltage direct routed to fcs\r\n");
      break;
-   case EEPROM_VALUE_MAP_VFAS_AVERAGE10:
-     console_print("voltage average10 routed to vfas\r\n");
+   case EEPROM_VALUE_MAP_FCS_AVERAGE10:
+     console_print("voltage average10 routed to fcs\r\n");
      break;
-   case EEPROM_VALUE_MAP_VFAS_AVERAGE50:
-     console_print("voltage average50 routed to vfas\r\n");
+   case EEPROM_VALUE_MAP_FCS_AVERAGE50:
+     console_print("voltage average50 routed to fcs\r\n");
      break;
    default:
-     console_print("Invalid data routed to vfas\r\n");
+     console_print("Invalid data routed to fcs\r\n");
      break;    
   }  
   switch(EEPROM.read(EEPROM_ADDR_MAP_TELEM_DATA_CURRENT)) {
@@ -217,18 +224,18 @@ void do_map_dump() {
 }
 
 void do_map(char* p) {
-  if(strcmp(p, "vfas") == 0) {
+  if(strcmp(p, "fcs") == 0) {
     p = strtok(NULL, " ");
     if(p != NULL) {
       if(strcmp(p, "direct") == 0) {
-        EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_VFAS, EEPROM_VALUE_MAP_VFAS_DIRECT);
-        console_print("voltage direct routed to vfas\r\n");
+        EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_FCS, EEPROM_VALUE_MAP_FCS_DIRECT);
+        console_print("voltage direct routed to fcs\r\n");
       } else if(strcmp(p, "average10") == 0) {
-        EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_VFAS, EEPROM_VALUE_MAP_VFAS_AVERAGE10);
-        console_print("voltage average10 routed to vfas\r\n");
+        EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_FCS, EEPROM_VALUE_MAP_FCS_AVERAGE10);
+        console_print("voltage average10 routed to fcs\r\n");
       } else if(strcmp(p, "average50") == 0) {
-        EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_VFAS, EEPROM_VALUE_MAP_VFAS_AVERAGE50);
-        console_print("voltage average50 routed to vfas\r\n");
+        EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_FCS, EEPROM_VALUE_MAP_FCS_AVERAGE50);
+        console_print("voltage average50 routed to fcs\r\n");
       }
     }
   } else if(strcmp(p, "current") == 0) {
@@ -360,20 +367,20 @@ void do_frsky() {
   char* p;
   
   p = strtok(NULL, " ");
-  if(strcmp(p, "vfas") == 0) {
+  if(strcmp(p, "fcs") == 0) {
     p = strtok(NULL, " ");
     if(p != NULL) {
       if(strcmp(p, "enable") == 0) {
-        EEPROM.write(EEPROM_ADDR_FRSKY_VFAS_ENABLE, 1);
+        EEPROM.write(EEPROM_ADDR_FRSKY_FCS_ENABLE, 1);
       } else if(strcmp(p, "disable") == 0) {
-        EEPROM.write(EEPROM_ADDR_FRSKY_VFAS_ENABLE, 0);
+        EEPROM.write(EEPROM_ADDR_FRSKY_FCS_ENABLE, 0);
       }
 
     }
-    if(EEPROM.read(EEPROM_ADDR_FRSKY_VFAS_ENABLE)) {
-      console_print("frsky vfas enabled\r\n");
+    if(EEPROM.read(EEPROM_ADDR_FRSKY_FCS_ENABLE)) {
+      console_print("frsky fcs enabled\r\n");
     } else {
-      console_print("frsky vfas disabled\r\n");
+      console_print("frsky fcs disabled\r\n");
     }
   }
 }
@@ -396,7 +403,14 @@ void do_command(char *cmd_buffer) {
         p = strtok(NULL, " ");
         if(strcmp(p, "all") == 0) {
             p = strtok(NULL, " ");
-            parse_debug_on_off(p, &debugMavAllEnable, "Mav All");
+			parse_debug_on_off(p, &debugMavHeartbeatEnable, "Mav Heartbeat");
+			parse_debug_on_off(p, &debugMavGpsEnable, "Mav GPS");
+			parse_debug_on_off(p, &debugMavAttitudeEnable, "Mav Attitude");
+			parse_debug_on_off(p, &debugMavImuEnable, "Mav IMU");
+			parse_debug_on_off(p, &debugMavHudEnable, "Mav HUD");
+			parse_debug_on_off(p, &debugMavStatusEnable, "Mav Status");
+			parse_debug_on_off(p, &debugMavTextEnable, "Mav Text");
+			parse_debug_on_off(p, &debugMavOtherEnable, "Mav Other");
         } else if (strcmp(p, "heartbeat") == 0) {
             p = strtok(NULL, " ");
             parse_debug_on_off(p, &debugMavHeartbeatEnable, "Mav Heartbeat");
@@ -408,10 +422,10 @@ void do_command(char *cmd_buffer) {
             parse_debug_on_off(p, &debugMavAttitudeEnable, "Mav Attitude");
         } else if (strcmp(p, "imu") == 0) {
             p = strtok(NULL, " ");
-            parse_debug_on_off(p, &debugMavImuEnable, "Mav IMU");            
-        } else if (strcmp(p, "vfr") == 0) {
+            parse_debug_on_off(p, &debugMavImuEnable, "Mav IMU");  
+        } else if (strcmp(p, "hud") == 0) {
             p = strtok(NULL, " ");
-            parse_debug_on_off(p, &debugMavVfrEnable, "Mav VFR");
+            parse_debug_on_off(p, &debugMavHudEnable, "Mav HUD");
         } else if (strcmp(p, "status") == 0) {
             p = strtok(NULL, " ");
             parse_debug_on_off(p, &debugMavStatusEnable, "Mav Status");
@@ -473,7 +487,7 @@ void check_for_console_command() {
       cmd_buffer[cmd_index++] = '\0';
       cmd_index = 0;
       do_command(cmd_buffer);
-      DEBUG_SERIAL.write("]");
+      DEBUG_SERIAL.write("] ");
     } else {
       DEBUG_SERIAL.write(c);
       cmd_buffer[cmd_index++] = tolower(c);

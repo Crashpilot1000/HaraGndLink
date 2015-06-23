@@ -5,7 +5,7 @@
 #define LOG_MAV_GPS       2
 #define LOG_MAV_ATTITUDE  3
 #define LOG_MAV_IMU       4
-#define LOG_MAV_VFR       5
+#define LOG_MAV_HUD       5
 #define LOG_MAV_STATUS    6
 #define LOG_MAV_TEXT      7
 #define LOG_MAV_OTHER     8
@@ -28,17 +28,18 @@
 
 #define TIMESTAMP_FRSKY_REQUEST                    10
 #define TIMESTAMP_FRSKY_VARIO                      11
-#define TIMESTAMP_FRSKY_FAS                        12
+#define TIMESTAMP_FRSKY_FCS                        12
 #define TIMESTAMP_FRSKY_GPS                        13
 #define TIMESTAMP_FRSKY_RPM                        14
-#define TIMESTAMP_FRSKY_OTHER                      15
+#define TIMESTAMP_FRSKY_FLVSS                      15
+#define TIMESTAMP_FRSKY_OTHER                      16
 
 extern int debugMavAllEnable;
 extern int debugMavHeartbeatEnable;
 extern int debugMavGpsEnable;
 extern int debugMavImuEnable;
 extern int debugMavAttitudeEnable;
-extern int debugMavVfrEnable;
+extern int debugMavHudEnable;
 extern int debugMavStatusEnable;
 extern int debugMavTextEnable;
 extern int debugMavOtherEnable;

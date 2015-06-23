@@ -1,9 +1,9 @@
 
-#define EEPROM_INIT_VALUE_110                            0x55
-#define EEPROM_INIT_VALUE_111                            0x56
+#define EEPROM_INIT_VALUE_001                            0x55																	// version 0.1
+#define EEPROM_INIT_VALUE_100                            0x56																	// version 1.0
 
 void telem_data_factory_reset() {
-    EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_VFAS, EEPROM_VALUE_MAP_VFAS_AVERAGE10);
+    EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_FCS, EEPROM_VALUE_MAP_FCS_AVERAGE10);
     EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_CURRENT, EEPROM_VALUE_MAP_CURRENT_AVERAGE10);
     EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_ACCX, EEPROM_VALUE_MAP_ACCX_PEAK_AVERAGE10);
     EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_ACCY, EEPROM_VALUE_MAP_ACCY_PEAK_AVERAGE10);
@@ -11,33 +11,31 @@ void telem_data_factory_reset() {
     EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_GPS_SPEED, EEPROM_VALUE_MAP_GPS_SPEED_KPH);
     EEPROM.write(EEPROM_ADDR_MAP_TELEM_DATA_T2, EEPROM_VALUE_MAP_DATA_T2_BATTERY_REMAINING);
     EEPROM.write(EEPROM_ADDR_HDOP_THRESHOLD, 5);
-    EEPROM.write(EEPROM_ADDR_FRSKY_VFAS_ENABLE, 1);
-    EEPROM.write(EEPROM_ADDR_HAS_BEEN_INITIALIZED, EEPROM_INIT_VALUE_111);
+    EEPROM.write(EEPROM_ADDR_FRSKY_FCS_ENABLE, 1);
+    EEPROM.write(EEPROM_ADDR_HAS_BEEN_INITIALIZED, EEPROM_INIT_VALUE_001);
 }
 
 void telem_data_init() {
-  if(EEPROM.read(EEPROM_ADDR_HAS_BEEN_INITIALIZED) == EEPROM_INIT_VALUE_110) {                // version 1.1.0
-    console_print("Upgrading EEPROM schema from 1.1.0\r\n");
-    EEPROM.write(EEPROM_ADDR_FRSKY_VFAS_ENABLE, 1);   
-    EEPROM.write(EEPROM_ADDR_HAS_BEEN_INITIALIZED, EEPROM_INIT_VALUE_111); 
-  } else if(EEPROM.read(EEPROM_ADDR_HAS_BEEN_INITIALIZED) == EEPROM_INIT_VALUE_111) {         // version 1.1.1
-  } else {
+//  if(EEPROM.read(EEPROM_ADDR_HAS_BEEN_INITIALIZED) == EEPROM_INIT_VALUE_001) {                // version 0.1
+//    console_print("EEPROM is v0.1, doing nothing.\r\n");
+//    EEPROM.write(EEPROM_ADDR_HAS_BEEN_INITIALIZED, EEPROM_INIT_VALUE_001); 
+//	} else {
     console_print("Resetting EEPROM to default schema\r\n");
     telem_data_factory_reset();
-  }
+//  }
 }
 
 uint16_t telem_data_get_value(uint16_t telemetry_data_value_id) {
   switch(telemetry_data_value_id) {
-    case TELEM_DATA_VFAS:
-      switch(EEPROM.read(EEPROM_ADDR_MAP_TELEM_DATA_VFAS)) {
-        case EEPROM_VALUE_MAP_VFAS_DIRECT:
+    case TELEM_DATA_FCS:
+      switch(EEPROM.read(EEPROM_ADDR_MAP_TELEM_DATA_FCS)) {
+        case EEPROM_VALUE_MAP_FCS_DIRECT:
           return mav.battery_voltage;
           break;
-        case EEPROM_VALUE_MAP_VFAS_AVERAGE10:
+        case EEPROM_VALUE_MAP_FCS_AVERAGE10:
           return mavlink_get_average(mav.battery_voltage_buffer, mav.battery_voltage_buffer_start, mav.battery_voltage_buffer_length, 10, MAV_HISTORY_BUFFER_SIZE);
           break;
-        case EEPROM_VALUE_MAP_VFAS_AVERAGE50:
+        case EEPROM_VALUE_MAP_FCS_AVERAGE50:
           return mavlink_get_average(mav.battery_voltage_buffer, mav.battery_voltage_buffer_start, mav.battery_voltage_buffer_length, 50, MAV_HISTORY_BUFFER_SIZE);
           break;
       }
